@@ -64,7 +64,7 @@ interface UserManagementModalProps {
   users: User[];
   currentUser: User;
   onUpdateUsers: (users: User[]) => void;
-  onAddUser: (userData: Omit<User, 'id' | 'role' | 'isLocked'>) => { success: boolean, message?: string };
+  onAddUser: (userData: Omit<User, 'id' | 'role' | 'isLocked' | 'expiryDate'>, packageId: string) => { success: boolean, message?: string };
 }
 
 const UserManagementModal: React.FC<UserManagementModalProps> = ({ onClose, users, currentUser, onUpdateUsers, onAddUser }) => {
@@ -125,19 +125,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ onClose, user
         return;
     }
 
-    const selectedPackage = SUBSCRIPTION_PACKAGES.find(p => p.id === selectedPackageId);
-    if (!selectedPackage) {
-      setAddError('Vui lòng chọn một gói đăng ký hợp lệ.');
-      return;
-    }
-    
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + selectedPackage.durationDays);
-
-    const result = onAddUser({
-      ...newUser,
-      expiryDate: expiryDate.toISOString(),
-    });
+    const result = onAddUser(newUser, selectedPackageId);
 
     if (result.success) {
       setNewUser({ fullName: '', username: '', password: '', phone: '' });

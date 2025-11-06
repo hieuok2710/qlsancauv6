@@ -24,7 +24,7 @@ interface AppProps {
   currentUser: User;
   users: User[];
   onUpdateUsers: (updatedUsers: User[]) => void;
-  onAddUser: (userData: Omit<User, 'id' | 'role' | 'isLocked'>) => { success: boolean, message?: string };
+  onAddUser: (userData: Omit<User, 'id' | 'role' | 'isLocked' | 'expiryDate'>, packageId: string) => { success: boolean, message?: string };
 }
 
 interface SaveConfirmModalProps {

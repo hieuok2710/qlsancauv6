@@ -44,8 +44,8 @@ const BackupRestoreModal: React.FC<BackupRestoreModalProps> = ({
 
             <main className="flex-1 p-6 space-y-4">
               <div className="p-4 bg-blue-50 border-l-4 border-blue-400 text-blue-800 rounded-r-lg">
-                <h4 className="font-bold">Sao lưu toàn bộ dữ liệu</h4>
-                <p className="text-sm mt-1">Lưu trữ toàn bộ dữ liệu của bạn, bao gồm: <strong>danh sách người chơi, lịch sử các buổi chơi, doanh thu, danh sách thức ăn & thức uống, và các cài đặt khác</strong> vào một file <strong>.json</strong> an toàn. Bạn nên thực hiện việc này thường xuyên để tránh mất dữ liệu.</p>
+                <h4 className="font-bold">Sao lưu & Chuyển đổi thiết bị</h4>
+                <p className="text-sm mt-1">Lưu trữ toàn bộ dữ liệu của bạn, bao gồm: <strong>danh sách người chơi, lịch sử các buổi chơi, doanh thu, danh sách thức ăn & thức uống, và các cài đặt khác</strong>. <br/>Sử dụng tính năng này để tạo một file an toàn, sau đó dùng file này để phục hồi dữ liệu trên một thiết bị khác (ví dụ: chuyển từ máy tính sang điện thoại).</p>
                 <button 
                   onClick={onBackupData} 
                   className="mt-3 flex items-center bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-sm text-sm"
@@ -57,7 +57,7 @@ const BackupRestoreModal: React.FC<BackupRestoreModalProps> = ({
 
               <div className="p-4 bg-orange-50 border-l-4 border-orange-400 text-orange-800 rounded-r-lg">
                 <h4 className="font-bold">Phục hồi từ sao lưu tự động</h4>
-                <p className="text-sm mt-1">Hệ thống tự động sao lưu định kỳ. Sử dụng tùy chọn này nếu bạn gặp sự cố và muốn quay lại bản sao lưu gần nhất.</p>
+                <p className="text-sm mt-1">Hệ thống tự động sao lưu định kỳ. Sử dụng tùy chọn này nếu bạn gặp sự cố và muốn quay lại bản sao lưu gần nhất trên chính thiết bị này.</p>
                 <button 
                   onClick={handleRestoreAutoBackupClick}
                   className="mt-3 flex items-center bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-sm text-sm"
@@ -68,8 +68,8 @@ const BackupRestoreModal: React.FC<BackupRestoreModalProps> = ({
               </div>
 
               <div className="p-4 bg-red-50 border-l-4 border-red-400 text-red-800 rounded-r-lg">
-                <h4 className="font-bold">Phục hồi từ file .json</h4>
-                <p className="text-sm mt-1"><strong>Cảnh báo:</strong> Hành động này sẽ <strong>ghi đè toàn bộ dữ liệu hiện tại</strong> với dữ liệu từ file bạn chọn. Không thể hoàn tác.</p>
+                <h4 className="font-bold">Phục hồi từ file</h4>
+                <p className="text-sm mt-1"><strong>Cảnh báo:</strong> Hành động này sẽ <strong>ghi đè toàn bộ dữ liệu hiện tại trên thiết bị này</strong> với dữ liệu từ file bạn chọn. Không thể hoàn tác.</p>
                 <input
                     type="file"
                     ref={restoreInputRef}

@@ -120,15 +120,24 @@ const Main: React.FC = () => {
     return { success: true };
   };
 
-  const handleAdminAddUser = (newUserData: Omit<User, 'id' | 'role' | 'isLocked'>): { success: boolean, message?: string } => {
+  const handleAdminAddUser = (newUserData: Omit<User, 'id' | 'role' | 'expiryDate' | 'isLocked'>, packageId: string): { success: boolean, message?: string } => {
     if (users.some(u => u.username === newUserData.username)) {
         return { success: false, message: 'Tên đăng nhập đã tồn tại.' };
     }
+
+    const selectedPackage = SUBSCRIPTION_PACKAGES.find(p => p.id === packageId);
+    if (!selectedPackage) {
+        return { success: false, message: 'Gói đăng ký không hợp lệ.' };
+    }
+    
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + selectedPackage.durationDays);
 
     const userToCreate: User = {
         ...newUserData,
         id: crypto.randomUUID(),
         role: 'user',
+        expiryDate: expiryDate.toISOString(),
         isLocked: false,
     };
 
