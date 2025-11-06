@@ -1,7 +1,7 @@
 import { Drink, Food } from './types';
 
 // --- Cost Configuration ---
-export const COURT_FEE = 50000; // per person per session
+export const COURT_FEE = 15000; // per person per session
 export const SHUTTLECOCK_FEE_PER_MATCH = 20000; // total fee per match, to be divided among losers
 
 // --- Player Configuration ---
