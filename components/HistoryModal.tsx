@@ -117,7 +117,9 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ onClose, sessions, formatCu
                                         {player.isPaid && <CheckCircleIcon className="w-5 h-5 text-green-500 flex-shrink-0" title="Đã thanh toán" />}
                                         <div>
                                             <p className="font-medium text-gray-800">{player.name}
-                                              {player.losses > 0 && <span className="ml-2 text-xs text-red-600">({player.losses} lần thua)</span>}
+                                                <span className="ml-2 text-xs font-normal text-gray-500">
+                                                  (Thắng {player.wins || 0} / Thua {player.losses || 0})
+                                                </span>
                                             </p>
                                              <div className="text-xs text-gray-500">
                                                 {consumedItems.join(', ')}

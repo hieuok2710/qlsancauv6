@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { PlayerDetails, Drink, Food } from '../types';
 import { MinusIcon, PlusIcon, UserIcon, ShuttlecockIcon, UsersIcon, AdjustmentsIcon, CheckCircleIcon, CashIcon, WaterIcon, FoodIcon } from './IconComponents';
@@ -16,12 +17,15 @@ interface PlayerCardProps {
   onTogglePaid: (id: string) => void;
 }
 
-const DrinkManager: React.FC<{
+interface DrinkManagerProps {
   playerDetails: PlayerDetails;
   onUpdateDrink: (id: string, drinkId: string, amount: number) => void;
   isPaid: boolean;
   drinks: Drink[];
-}> = ({ playerDetails, onUpdateDrink, isPaid, drinks }) => {
+  formatCurrency: (amount: number) => string;
+}
+
+const DrinkManager: React.FC<DrinkManagerProps> = ({ playerDetails, onUpdateDrink, isPaid, drinks, formatCurrency }) => {
   const [selectedDrinkId, setSelectedDrinkId] = useState(drinks[0]?.id || '');
 
   const handleAddDrink = (e: React.MouseEvent) => {
@@ -66,13 +70,18 @@ const DrinkManager: React.FC<{
           {consumedDrinksEntries.map(([drinkId, quantity]) => {
             const drink = drinks.find(d => d.id === drinkId);
             if (!drink) return null;
+            // Fix: Explicitly cast quantity to a number before arithmetic operation.
+            const itemCost = drink.price * Number(quantity);
             return (
               <div key={drinkId} className="flex items-center justify-between bg-slate-100/80 p-1.5 pl-3 rounded-md">
                 <span className="text-slate-600 font-medium">{drink.name}</span>
-                <div className="flex items-center bg-white rounded-full border border-slate-200">
-                  <button onClick={() => onUpdateDrink(playerDetails.id, drinkId, -1)} disabled={isPaid} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-emerald-500"><MinusIcon className="w-4 h-4" /></button>
-                  <span className="px-2.5 font-semibold text-center w-8">{quantity}</span>
-                  <button onClick={() => onUpdateDrink(playerDetails.id, drinkId, 1)} disabled={isPaid} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-emerald-500"><PlusIcon className="w-4 h-4" /></button>
+                <div className="flex items-center gap-3">
+                  <span className="font-semibold text-emerald-700 text-sm w-20 text-right">{formatCurrency(itemCost)}</span>
+                  <div className="flex items-center bg-white rounded-full border border-slate-200">
+                    <button onClick={() => onUpdateDrink(playerDetails.id, drinkId, -1)} disabled={isPaid} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-emerald-500"><MinusIcon className="w-4 h-4" /></button>
+                    <span className="px-2.5 font-semibold text-center w-8">{quantity}</span>
+                    <button onClick={() => onUpdateDrink(playerDetails.id, drinkId, 1)} disabled={isPaid} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-emerald-500"><PlusIcon className="w-4 h-4" /></button>
+                  </div>
                 </div>
               </div>
             );
@@ -83,12 +92,15 @@ const DrinkManager: React.FC<{
   );
 };
 
-const FoodManager: React.FC<{
+interface FoodManagerProps {
   playerDetails: PlayerDetails;
   onUpdateFood: (id: string, foodId: string, amount: number) => void;
   isPaid: boolean;
   foods: Food[];
-}> = ({ playerDetails, onUpdateFood, isPaid, foods }) => {
+  formatCurrency: (amount: number) => string;
+}
+
+const FoodManager: React.FC<FoodManagerProps> = ({ playerDetails, onUpdateFood, isPaid, foods, formatCurrency }) => {
   const [selectedFoodId, setSelectedFoodId] = useState(foods[0]?.id || '');
   
 useEffect(() => {
@@ -139,13 +151,18 @@ useEffect(() => {
           {consumedFoodsEntries.map(([foodId, quantity]) => {
             const food = foods.find(f => f.id === foodId);
             if (!food) return null;
+            // Fix: Explicitly cast quantity to a number before arithmetic operation.
+            const itemCost = food.price * Number(quantity);
             return (
               <div key={foodId} className="flex items-center justify-between bg-slate-100/80 p-1.5 pl-3 rounded-md">
                 <span className="text-slate-600 font-medium">{food.name}</span>
-                <div className="flex items-center bg-white rounded-full border border-slate-200">
-                  <button onClick={() => onUpdateFood(playerDetails.id, foodId, -1)} disabled={isPaid} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-emerald-500"><MinusIcon className="w-4 h-4" /></button>
-                  <span className="px-2.5 font-semibold text-center w-8">{quantity}</span>
-                  <button onClick={() => onUpdateFood(playerDetails.id, foodId, 1)} disabled={isPaid} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-emerald-500"><PlusIcon className="w-4 h-4" /></button>
+                 <div className="flex items-center gap-3">
+                  <span className="font-semibold text-amber-700 text-sm w-20 text-right">{formatCurrency(itemCost)}</span>
+                  <div className="flex items-center bg-white rounded-full border border-slate-200">
+                    <button onClick={() => onUpdateFood(playerDetails.id, foodId, -1)} disabled={isPaid} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-emerald-500"><MinusIcon className="w-4 h-4" /></button>
+                    <span className="px-2.5 font-semibold text-center w-8">{quantity}</span>
+                    <button onClick={() => onUpdateFood(playerDetails.id, foodId, 1)} disabled={isPaid} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-emerald-500"><PlusIcon className="w-4 h-4" /></button>
+                  </div>
                 </div>
               </div>
             );
@@ -218,6 +235,11 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ playerDetails, drinks, foods, o
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <p className={`font-bold text-lg ${isPaid ? 'text-slate-600' : 'text-slate-800'}`}>{playerDetails.name}</p>
+            {!isGuest && playerDetails.wins > 0 && (
+              <span className="bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-green-200">
+                Thắng {playerDetails.wins}
+              </span>
+            )}
             {!isGuest && playerDetails.losses > 0 && (
               <span className="bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-red-200">
                 Thua {playerDetails.losses}
@@ -250,11 +272,11 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ playerDetails, drinks, foods, o
       <div className="w-full md:w-auto flex flex-col md:flex-row gap-4 flex-shrink-0">
         <div className="flex-1 md:w-60">
             <h4 className="text-sm font-semibold text-slate-500 mb-2 flex items-center gap-2"><WaterIcon className="w-4 h-4"/> Thức uống</h4>
-            <DrinkManager playerDetails={playerDetails} onUpdateDrink={onUpdateDrink} isPaid={isPaid} drinks={drinks} />
+            <DrinkManager playerDetails={playerDetails} onUpdateDrink={onUpdateDrink} isPaid={isPaid} drinks={drinks} formatCurrency={formatCurrency} />
         </div>
         <div className="flex-1 md:w-60">
             <h4 className="text-sm font-semibold text-slate-500 mb-2 flex items-center gap-2"><FoodIcon className="w-4 h-4"/> Món ăn</h4>
-            <FoodManager playerDetails={playerDetails} onUpdateFood={onUpdateFood} isPaid={isPaid} foods={foods} />
+            <FoodManager playerDetails={playerDetails} onUpdateFood={onUpdateFood} isPaid={isPaid} foods={foods} formatCurrency={formatCurrency} />
         </div>
       </div>
 

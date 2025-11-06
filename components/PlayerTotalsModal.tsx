@@ -39,10 +39,15 @@ const PlayerTotalsModal: React.FC<PlayerTotalsModalProps> = ({ onClose, playerDe
                     )}
                     <span className="font-bold text-lg text-gray-900">{details.name}</span>
                   </div>
-                  {details.losses > 0 && (
-                    <span className="bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-red-200">
-                      Thua {details.losses}
-                    </span>
+                  {(details.wins > 0 || details.losses > 0) && (
+                    <div className="flex items-center gap-1">
+                      <span className="bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-green-200">
+                        Thắng: {details.wins}
+                      </span>
+                      <span className="bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-red-200">
+                        Thua: {details.losses}
+                      </span>
+                    </div>
                   )}
                 </div>
                 <div className="space-y-1 text-sm pl-9 text-gray-600">

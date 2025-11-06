@@ -8,7 +8,7 @@ interface CourtAssignmentProps {
   unassignedPlayers: Player[];
   onAssign: (playerId: string, slotId: string) => void;
   onUnassign: (slotId: string) => void;
-  onEndMatch: (courtIndex: number, losingTeam: 'A' | 'B') => void;
+  onEndMatch: (courtIndex: number) => void;
   courtGameTypes: Record<number, 'singles' | 'doubles'>;
   onSetGameType: (courtIndex: number, gameType: 'singles' | 'doubles') => void;
   courtColors: Record<number, string>;
@@ -121,7 +121,7 @@ const Court: React.FC<{
   unassignedPlayers: Player[];
   onAssign: (playerId: string, slotId: string) => void;
   onUnassign: (slotId: string) => void;
-  onEndMatch: (courtIndex: number, losingTeam: 'A' | 'B') => void;
+  onEndMatch: (courtIndex: number) => void;
   activeSlotId: string | null;
   setActiveSlotId: (slotId: string | null) => void;
   courtGameTypes: Record<number, 'singles' | 'doubles'>;
@@ -156,13 +156,9 @@ const Court: React.FC<{
     if (gameType === 'singles') {
         return teamAPlayersCount === 1 && teamBPlayersCount === 1;
     }
+    // For doubles, allow ending match even if not full, as long as both teams have players
     return teamAPlayersCount > 0 && teamBPlayersCount > 0;
   }, [teamAPlayerIds, teamBPlayerIds, gameType]);
-
-  const teamHeaderBaseClasses = "text-center text-sm font-bold rounded-t-md py-1";
-  const teamAHeaderClasses = `${teamHeaderBaseClasses} text-blue-700 ${isMatchEndable ? "cursor-pointer bg-gradient-to-b from-blue-100 to-blue-200/80 hover:from-blue-200 transition-colors" : "bg-blue-100/70"}`;
-  const teamBHeaderClasses = `${teamHeaderBaseClasses} text-red-700 ${isMatchEndable ? "cursor-pointer bg-gradient-to-b from-red-100 to-red-200/80 hover:from-red-200 transition-colors" : "bg-red-100/70"}`;
-
 
   return (
     <div 
@@ -208,13 +204,7 @@ const Court: React.FC<{
       <div className="grid grid-cols-2 gap-2">
         {/* Team A */}
         <div>
-          <div 
-            className={teamAHeaderClasses}
-            onClick={() => isMatchEndable && onEndMatch(courtIndex, 'A')}
-            title={isMatchEndable ? "Nhấn để xác nhận Đội A thua" : "Đội A"}
-          >
-            ĐỘI A
-          </div>
+           <div className="text-center text-sm font-bold rounded-t-md py-1 text-blue-700 bg-blue-100/70">ĐỘI A</div>
           <div className="bg-blue-50/50 p-2 rounded-b-md space-y-2 border-x border-b border-blue-200 min-h-[144px] flex flex-col justify-around">
             <CourtSlot slotId={`court-${courtIndex}-A-0`} playerId={props.assignments[`court-${courtIndex}-A-0`]} {...props} />
             {gameType === 'doubles' && (
@@ -224,13 +214,7 @@ const Court: React.FC<{
         </div>
         {/* Team B */}
         <div>
-           <div 
-            className={teamBHeaderClasses}
-            onClick={() => isMatchEndable && onEndMatch(courtIndex, 'B')}
-            title={isMatchEndable ? "Nhấn để xác nhận Đội B thua" : "Đội B"}
-          >
-            ĐỘI B
-          </div>
+           <div className="text-center text-sm font-bold rounded-t-md py-1 text-red-700 bg-red-100/70">ĐỘI B</div>
           <div className="bg-red-50/50 p-2 rounded-b-md space-y-2 border-x border-b border-red-200 min-h-[144px] flex flex-col justify-around">
             <CourtSlot slotId={`court-${courtIndex}-B-0`} playerId={props.assignments[`court-${courtIndex}-B-0`]} {...props} />
             {gameType === 'doubles' && (
@@ -238,6 +222,15 @@ const Court: React.FC<{
             )}
           </div>
         </div>
+      </div>
+      <div className="mt-2">
+        <button
+            onClick={() => onEndMatch(courtIndex)}
+            disabled={!isMatchEndable}
+            className="w-full bg-gray-700 hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-2 px-3 rounded-lg text-sm transition-colors"
+        >
+            Kết thúc trận
+        </button>
       </div>
     </div>
   );

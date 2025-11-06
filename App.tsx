@@ -17,6 +17,7 @@ import DrinkManagementModal from './components/DrinkManagementModal';
 import UserManagementModal from './components/UserManagementModal';
 import BackupRestoreModal from './components/BackupRestoreModal';
 import PaidPlayersModal from './components/PaidPlayersModal';
+import MatchResultModal from './components/MatchResultModal';
 
 interface AppProps {
   onLogout: () => void;
@@ -171,11 +172,19 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
   const [matchesPlayed, setMatchesPlayed] = useState(0);
   const [currentMatches, setCurrentMatches] = useState<Match[]>([]);
   const [playerLosses, setPlayerLosses] = useState<Record<string, number>>({});
+  const [playerWins, setPlayerWins] = useState<Record<string, number>>({});
   const [playerShuttlecockFees, setPlayerShuttlecockFees] = useState<Record<string, number>>({});
   const [notification, setNotification] = useState<string | null>(null);
   const [courtGameTypes, setCourtGameTypes] = useState<Record<number, 'singles' | 'doubles'>>(createInitialCourtGameTypes());
   const [courtColors, setCourtColors] = useState<Record<number, string>>({});
   const [isPlayerListVisible, setIsPlayerListVisible] = useState(true);
+  const [isMatchResultModalOpen, setIsMatchResultModalOpen] = useState(false);
+  const [activeMatch, setActiveMatch] = useState<{
+      courtIndex: number;
+      teamA: { id: string, name: string }[];
+      teamB: { id: string, name: string }[];
+      gameType: 'singles' | 'doubles';
+  } | null>(null);
   
   useEffect(() => {
     if (!storageKeys) return;
@@ -274,13 +283,14 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
         return {
             ...player,
             totalCost,
+            wins: playerWins[player.id] || 0,
             losses: playerLosses[player.id] || 0,
             drinksCost,
             foodCost,
             shuttlecockCost,
         };
     });
-  }, [players, playerLosses, playerShuttlecockFees, drinks, foods]);
+  }, [players, playerLosses, playerWins, playerShuttlecockFees, drinks, foods]);
 
   const playerCountForFee = useMemo(() => {
     return players.reduce((count, player) => {
@@ -424,6 +434,11 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
         delete newLosses[id];
         return newLosses;
     });
+     setPlayerWins(prev => {
+        const newWins = {...prev};
+        delete newWins[id];
+        return newWins;
+    });
     setPlayerShuttlecockFees(prev => {
         const newFees = {...prev};
         delete newFees[id];
@@ -467,6 +482,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
           
           setAssignments({});
           setPlayerLosses({});
+          setPlayerWins({});
           setPlayerShuttlecockFees({});
           
           setPlayers(finalPlayers);
@@ -617,48 +633,74 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
     });
   }, [storageKeys]);
 
-  const handleEndMatch = useCallback((courtIndex: number, losingTeam: 'A' | 'B') => {
+  const handleEndMatch = useCallback((courtIndex: number) => {
     const gameType = courtGameTypes[courtIndex] || 'doubles';
     
-    const teamASlots = gameType === 'singles' 
-      ? [`court-${courtIndex}-A-0`]
-      : [`court-${courtIndex}-A-0`, `court-${courtIndex}-A-1`];
-    
-    const teamBSlots = gameType === 'singles'
-      ? [`court-${courtIndex}-B-0`]
-      : [`court-${courtIndex}-B-0`, `court-${courtIndex}-B-1`];
-
-    const losingTeamSlots = losingTeam === 'A' ? teamASlots : teamBSlots;
-
-    const loserIds = losingTeamSlots
-      .map(slotId => assignments[slotId])
-      .filter((id): id is string => id !== null && id !== undefined);
-
-    if (loserIds.length === 0) {
-        setNotification(`Không có người chơi nào ở đội thua tại Sân ${courtIndex + 1}.`);
-        return;
-    }
-
-    const getTeamPlayers = (slots: string[]) => {
+    const getTeamPlayers = (team: 'A' | 'B') => {
+        const slots = gameType === 'singles' 
+          ? [`court-${courtIndex}-${team}-0`]
+          : [`court-${courtIndex}-${team}-0`, `court-${courtIndex}-${team}-1`];
+        
         return slots
             .map(slotId => assignments[slotId])
-            .filter((id): id is string => id !== null)
+            .filter((id): id is string => !!id)
             .map(id => {
                 const player = players.find(p => p.id === id);
-                return { id: id, name: player?.name || 'Unknown' };
+                return { id, name: player?.name || 'Unknown' };
             });
     };
 
-    const newMatch: Match = {
-        courtIndex,
-        gameType,
-        teamA: getTeamPlayers(teamASlots),
-        teamB: getTeamPlayers(teamBSlots),
-        losingTeam,
-    };
-    setCurrentMatches(prev => [...prev, newMatch]);
+    const teamA = getTeamPlayers('A');
+    const teamB = getTeamPlayers('B');
+
+    const requiredPlayers = gameType === 'singles' ? 1 : 1; // Require at least 1 player per team to start.
+    if (teamA.length < requiredPlayers || teamB.length < requiredPlayers) {
+        setNotification(`Không đủ người chơi ở Sân ${courtIndex + 1} để kết thúc trận đấu.`);
+        return;
+    }
+
+    setActiveMatch({ courtIndex, teamA, teamB, gameType });
+    setIsMatchResultModalOpen(true);
+  }, [assignments, courtGameTypes, players]);
+
+  const handleConfirmMatchResult = useCallback(({ winningTeam }: { winningTeam: 'A' | 'B' | 'DRAW' }) => {
+    if (!activeMatch) return;
+
+    const { courtIndex, teamA, teamB, gameType } = activeMatch;
+
+    const slotsToClear = gameType === 'singles' 
+        ? [`court-${courtIndex}-A-0`, `court-${courtIndex}-B-0`]
+        : [`court-${courtIndex}-A-0`, `court-${courtIndex}-A-1`, `court-${courtIndex}-B-0`, `court-${courtIndex}-B-1`];
     
+    setAssignments(prev => {
+        const newAssignments = { ...prev };
+        slotsToClear.forEach(slotId => {
+            if (newAssignments[slotId]) newAssignments[slotId] = null;
+        });
+        return newAssignments;
+    });
+
+    if (winningTeam === 'DRAW') {
+        setNotification(`Trận đấu tại Sân ${courtIndex + 1} kết thúc với tỉ số hòa.`);
+        setIsMatchResultModalOpen(false);
+        setActiveMatch(null);
+        return;
+    }
+
+    const winners = winningTeam === 'A' ? teamA : teamB;
+    const losers = winningTeam === 'A' ? teamB : teamA;
+    const winnerIds = winners.map(p => p.id);
+    const loserIds = losers.map(p => p.id);
+
     setMatchesPlayed(prev => prev + 1);
+
+    setPlayerWins(prev => {
+        const newWins = { ...prev };
+        winnerIds.forEach(id => {
+            newWins[id] = (newWins[id] || 0) + 1;
+        });
+        return newWins;
+    });
 
     setPlayerLosses(prev => {
         const newLosses = { ...prev };
@@ -668,31 +710,33 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
         return newLosses;
     });
 
-    const feePerLoser = SHUTTLECOCK_FEE_PER_MATCH / loserIds.length;
-    setPlayerShuttlecockFees(prev => {
-        const newFees = { ...prev };
-        loserIds.forEach(id => {
-            newFees[id] = (newFees[id] || 0) + feePerLoser;
+    if (loserIds.length > 0) {
+        const feePerLoser = SHUTTLECOCK_FEE_PER_MATCH / loserIds.length;
+        setPlayerShuttlecockFees(prev => {
+            const newFees = { ...prev };
+            loserIds.forEach(id => {
+                newFees[id] = (newFees[id] || 0) + feePerLoser;
+            });
+            return newFees;
         });
-        return newFees;
-    });
-    
-    const slotsToClear = [...teamASlots, ...teamBSlots];
+    }
 
-    setAssignments(prev => {
-        const newAssignments = { ...prev };
-        slotsToClear.forEach(slotId => {
-            if (newAssignments[slotId]) {
-                newAssignments[slotId] = null;
-            }
-        });
-        return newAssignments;
-    });
+    const newMatch: Match = {
+        courtIndex,
+        gameType,
+        teamA,
+        teamB,
+        losingTeam: winningTeam === 'A' ? 'B' : 'A',
+    };
+    setCurrentMatches(prev => [...prev, newMatch]);
 
-    const loserNames = loserIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean);
-    setNotification(`Trận đấu ở Sân ${courtIndex + 1} kết thúc. Đội thua: ${loserNames.join(', ')}.`);
+    const winnerNames = winners.map(p => p.name).join(', ');
+    setNotification(`Sân ${courtIndex + 1}: ${winnerNames} chiến thắng!`);
 
-  }, [assignments, courtGameTypes, players]);
+    setIsMatchResultModalOpen(false);
+    setActiveMatch(null);
+  }, [activeMatch]);
+
   
   const handleSaveSession = useCallback(() => {
     if (playerDetails.length === 0 || !storageKeys) {
@@ -728,6 +772,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
     setAssignments({});
     setMatchesPlayed(0);
     setPlayerLosses({});
+    setPlayerWins({});
     setPlayerShuttlecockFees({});
     setCurrentMatches([]);
     setNotification('Đã lưu buổi chơi và bắt đầu buổi mới!');
@@ -1074,6 +1119,15 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
           onRestoreFromAutoBackup={handleRestoreFromAutoBackup}
         />
       )}
+      {isMatchResultModalOpen && activeMatch && (
+        <MatchResultModal
+          isOpen={isMatchResultModalOpen}
+          onClose={() => setIsMatchResultModalOpen(false)}
+          onConfirmResult={handleConfirmMatchResult}
+          matchDetails={activeMatch}
+        />
+      )}
+
 
       {notification && (
         <div className="fixed bottom-5 right-5 bg-gray-900 text-white py-2 px-5 rounded-lg shadow-lg flex items-center animate-in slide-in-from-right duration-300 z-50">

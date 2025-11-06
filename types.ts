@@ -28,6 +28,7 @@ export interface Player {
 
 export interface PlayerDetails extends Player {
   totalCost: number;
+  wins: number;
   losses: number;
   drinksCost: number;
   foodCost: number;

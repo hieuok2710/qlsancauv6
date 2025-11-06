@@ -45,7 +45,7 @@ const BackupRestoreModal: React.FC<BackupRestoreModalProps> = ({
             <main className="flex-1 p-6 space-y-4">
               <div className="p-4 bg-blue-50 border-l-4 border-blue-400 text-blue-800 rounded-r-lg">
                 <h4 className="font-bold">Sao lưu toàn bộ dữ liệu</h4>
-                <p className="text-sm mt-1">Lưu trữ tất cả dữ liệu ứng dụng (người chơi, lịch sử, cài đặt...) vào một file <strong>.json</strong>. Bạn nên thực hiện việc này thường xuyên để tránh mất dữ liệu.</p>
+                <p className="text-sm mt-1">Lưu trữ toàn bộ dữ liệu của bạn, bao gồm: <strong>danh sách người chơi, lịch sử các buổi chơi, doanh thu, danh sách thức ăn & thức uống, và các cài đặt khác</strong> vào một file <strong>.json</strong> an toàn. Bạn nên thực hiện việc này thường xuyên để tránh mất dữ liệu.</p>
                 <button 
                   onClick={onBackupData} 
                   className="mt-3 flex items-center bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-sm text-sm"
