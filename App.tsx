@@ -24,7 +24,7 @@ interface AppProps {
   currentUser: User;
   users: User[];
   onUpdateUsers: (updatedUsers: User[]) => void;
-  onAddUser: (userData: Omit<User, 'id' | 'role' | 'isLocked' | 'expiryDate'>, packageId: string) => { success: boolean, message?: string };
+  onAddUser: (userData: Omit<User, 'id' | 'role' | 'isLocked' | 'expiryDate'>, packageId: string, role: 'manager' | 'user') => { success: boolean, message?: string };
 }
 
 interface SaveConfirmModalProps {
@@ -760,7 +760,6 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
     };
 
     const updatedSessions = [...sessions, newSession];
-    setSessions(updatedSessions);
     try {
         localStorage.setItem(storageKeys.history, JSON.stringify(updatedSessions));
     } catch (e) {
@@ -883,7 +882,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
                         Danh sách người chơi
                     </h2>
                     <div className="flex items-center gap-2">
-                        {currentUser.role === 'admin' && (
+                        {(currentUser.role === 'admin' || currentUser.role === 'manager') && (
                             <button 
                                 onClick={() => setIsUserManagementModalOpen(true)}
                                 className="flex items-center bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 font-semibold py-2 px-3 rounded-lg transition duration-300 shadow-sm text-sm"

@@ -1,22 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
-import { CloseIcon, TrashIcon, UserIcon, UserCogIcon, LockClosedIcon, LockOpenIcon, CalendarIcon, PlusIcon, SaveIcon } from './IconComponents';
+import { CloseIcon, TrashIcon, UserIcon, UserCogIcon, LockClosedIcon, LockOpenIcon, CalendarIcon, PlusIcon, SaveIcon, ShieldCheckIcon } from './IconComponents';
 import SubscriptionModal from './SubscriptionModal';
 import { SUBSCRIPTION_PACKAGES } from '../constants';
 
 interface EditableUserRowProps {
   user: User;
+  currentUser: User;
   onRemove: (id: string) => void;
   onToggleLock: (id: string) => void;
   onOpenSubscription: (user: User) => void;
-  isCurrentUser: boolean;
 }
 
-const EditableUserRow: React.FC<EditableUserRowProps> = ({ user, onRemove, onToggleLock, onOpenSubscription, isCurrentUser }) => {
+const EditableUserRow: React.FC<EditableUserRowProps> = ({ user, currentUser, onRemove, onToggleLock, onOpenSubscription }) => {
   
   const expiryDate = new Date(user.expiryDate);
   const isExpired = expiryDate.getTime() < new Date().getTime();
   const isAdmin = user.role === 'admin';
+  const isManager = user.role === 'manager';
+  const isCurrentUser = currentUser.id === user.id;
+
+  // Determine if the current user has permission to manage the target user
+  const canManage = !isCurrentUser && (
+    currentUser.role === 'admin' ||
+    (currentUser.role === 'manager' && user.role === 'user')
+  );
   
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -27,9 +35,13 @@ const EditableUserRow: React.FC<EditableUserRowProps> = ({ user, onRemove, onTog
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <UserIcon className="w-5 h-5 text-gray-500 flex-shrink-0" />
         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-x-4 min-w-0">
-            <div className="truncate">
-                <p className="font-semibold text-gray-900" title={user.fullName}>{user.fullName} {isCurrentUser && '(Bạn)'}</p>
-                <p className="text-sm text-gray-500 md:hidden">{user.username}</p>
+            <div className="truncate flex items-center gap-2">
+                <p className="font-semibold text-gray-900 truncate" title={user.fullName}>
+                  {user.fullName} {isCurrentUser && '(Bạn)'}
+                </p>
+                {isManager && <span className="text-xs font-bold text-blue-700 bg-blue-200 px-2 py-0.5 rounded-full">Quản lý</span>}
+                {isAdmin && <span className="text-xs font-bold text-emerald-700 bg-emerald-200 px-2 py-0.5 rounded-full">Admin</span>}
+
             </div>
             <span className="text-gray-600 truncate hidden md:block" title={user.username}>{user.username}</span>
             <span className={`font-semibold truncate ${isExpired && !isAdmin ? 'text-red-600' : 'text-gray-800'}`} title={user.expiryDate}>
@@ -38,20 +50,24 @@ const EditableUserRow: React.FC<EditableUserRowProps> = ({ user, onRemove, onTog
         </div>
       </div>
       <div className="flex items-center gap-1">
-        {!isAdmin && (
-           <button onClick={() => onOpenSubscription(user)} className="p-2 text-white bg-emerald-500 hover:bg-emerald-600 rounded-md" title="Đăng ký gói / Gia hạn">
+        {canManage && (
+          <>
+            {currentUser.role === 'admin' && (
+              <button onClick={() => onOpenSubscription(user)} className="p-2 text-white bg-emerald-500 hover:bg-emerald-600 rounded-md" title="Đăng ký gói / Gia hạn">
                 <CalendarIcon className="w-5 h-5" />
-            </button>
-        )}
-        {!isCurrentUser && !isAdmin && (
-            <>
+              </button>
+            )}
+            
             <button onClick={() => onToggleLock(user.id)} className={`p-2 rounded-md ${user.isLocked ? 'text-white bg-yellow-500 hover:bg-yellow-600' : 'text-white bg-gray-400 hover:bg-gray-500'}`} title={user.isLocked ? 'Mở khóa' : 'Khóa'}>
-                {user.isLocked ? <LockOpenIcon className="w-5 h-5" /> : <LockClosedIcon className="w-5 h-5" />}
+              {user.isLocked ? <LockOpenIcon className="w-5 h-5" /> : <LockClosedIcon className="w-5 h-5" />}
             </button>
-            <button onClick={() => onRemove(user.id)} className="p-2 text-white bg-red-500 hover:bg-red-600 rounded-md" title="Xóa">
+            
+            {currentUser.role === 'admin' && (
+              <button onClick={() => onRemove(user.id)} className="p-2 text-white bg-red-500 hover:bg-red-600 rounded-md" title="Xóa">
                 <TrashIcon className="w-5 h-5" />
-            </button>
-            </>
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -64,7 +80,7 @@ interface UserManagementModalProps {
   users: User[];
   currentUser: User;
   onUpdateUsers: (users: User[]) => void;
-  onAddUser: (userData: Omit<User, 'id' | 'role' | 'isLocked' | 'expiryDate'>, packageId: string) => { success: boolean, message?: string };
+  onAddUser: (userData: Omit<User, 'id' | 'role' | 'isLocked' | 'expiryDate'>, packageId: string, role: 'manager' | 'user') => { success: boolean, message?: string };
 }
 
 const UserManagementModal: React.FC<UserManagementModalProps> = ({ onClose, users, currentUser, onUpdateUsers, onAddUser }) => {
@@ -76,6 +92,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ onClose, user
     password: '',
     phone: '',
   });
+  const [newUserRole, setNewUserRole] = useState<'manager' | 'user'>('user');
   const [selectedPackageId, setSelectedPackageId] = useState(SUBSCRIPTION_PACKAGES[0]?.id || '');
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -105,8 +122,14 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ onClose, user
   const sortedUsers = [...users].sort((a, b) => {
     if (a.role === 'admin') return -1;
     if (b.role === 'admin') return 1;
+    if (a.role === 'manager' && b.role === 'user') return -1;
+    if (b.role === 'manager' && a.role === 'user') return 1;
     return a.fullName.localeCompare(b.fullName);
   });
+  
+  const filteredUsers = currentUser.role === 'manager' 
+    ? sortedUsers.filter(u => u.role !== 'admin')
+    : sortedUsers;
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -125,11 +148,14 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ onClose, user
         return;
     }
 
-    const result = onAddUser(newUser, selectedPackageId);
+    const roleToAdd = currentUser.role === 'admin' ? newUserRole : 'user';
+
+    const result = onAddUser(newUser, selectedPackageId, roleToAdd);
 
     if (result.success) {
       setNewUser({ fullName: '', username: '', password: '', phone: '' });
       setSelectedPackageId(SUBSCRIPTION_PACKAGES[0]?.id || '');
+      setNewUserRole('user');
       setIsAdding(false);
     } else {
       setAddError(result.message || 'Có lỗi xảy ra khi tạo người dùng.');
@@ -162,20 +188,20 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ onClose, user
                 <main className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
                     <div className="hidden md:flex items-center justify-between px-3 text-sm font-bold text-gray-500">
                         <div className="flex-1 grid grid-cols-3 gap-x-4 ml-10">
-                            <span>Họ và tên</span>
+                            <span>Họ và tên & Vai trò</span>
                             <span>Tên đăng nhập</span>
                             <span>Hạn sử dụng</span>
                         </div>
                         <div className="w-40 text-center">Thao tác</div>
                     </div>
-                    {sortedUsers.map(user => (
+                    {filteredUsers.map(user => (
                         <EditableUserRow
                             key={user.id}
                             user={user}
+                            currentUser={currentUser}
                             onRemove={handleRemove}
                             onToggleLock={handleToggleLock}
                             onOpenSubscription={handleOpenSubscription}
-                            isCurrentUser={currentUser.id === user.id}
                         />
                     ))}
                 </main>
@@ -189,17 +215,32 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ onClose, user
                           <input type="text" name="username" value={newUser.username} onChange={handleInputChange} placeholder="Tên đăng nhập*" className="w-full bg-white border border-gray-300 rounded-md p-2 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"/>
                           <input type="password" name="password" value={newUser.password} onChange={handleInputChange} placeholder="Mật khẩu (ít nhất 6 ký tự)*" className="w-full bg-white border border-gray-300 rounded-md p-2 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"/>
                           <input type="text" name="phone" value={newUser.phone} onChange={handleInputChange} placeholder="SĐT/Zalo" className="w-full bg-white border border-gray-300 rounded-md p-2 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"/>
-                          <div className="md:col-span-2">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Gói đăng ký ban đầu</label>
-                              <select 
-                                value={selectedPackageId} 
-                                onChange={(e) => setSelectedPackageId(e.target.value)}
-                                className="w-full bg-white border border-gray-300 rounded-md p-2 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                              >
-                                {SUBSCRIPTION_PACKAGES.map(pkg => (
-                                  <option key={pkg.id} value={pkg.id}>{pkg.name} - {new Intl.NumberFormat('vi-VN').format(pkg.price)}đ</option>
-                                ))}
-                              </select>
+                          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Gói đăng ký ban đầu</label>
+                                <select 
+                                  value={selectedPackageId} 
+                                  onChange={(e) => setSelectedPackageId(e.target.value)}
+                                  className="w-full bg-white border border-gray-300 rounded-md p-2 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                >
+                                  {SUBSCRIPTION_PACKAGES.map(pkg => (
+                                    <option key={pkg.id} value={pkg.id}>{pkg.name} - {new Intl.NumberFormat('vi-VN').format(pkg.price)}đ</option>
+                                  ))}
+                                </select>
+                              </div>
+                              {currentUser.role === 'admin' && (
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Vai trò</label>
+                                  <select 
+                                    value={newUserRole} 
+                                    onChange={(e) => setNewUserRole(e.target.value as 'manager' | 'user')}
+                                    className="w-full bg-white border border-gray-300 rounded-md p-2 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                  >
+                                    <option value="user">Người dùng</option>
+                                    <option value="manager">Quản lý</option>
+                                  </select>
+                                </div>
+                              )}
                           </div>
                       </div>
                       <div className="mt-4">

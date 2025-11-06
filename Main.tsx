@@ -23,9 +23,13 @@ const Main: React.FC = () => {
   useEffect(() => {
     try {
       const storedUsers = localStorage.getItem('badmintonUsers');
+      let usersFromStorage: User[] = [];
+      let shouldUpdateStorage = false;
+
       if (storedUsers) {
-        setUsers(JSON.parse(storedUsers));
+        usersFromStorage = JSON.parse(storedUsers);
       } else {
+        // First time setup: create admin user
         const adminUser: User = { 
           id: 'admin-user', 
           username: 'admin', 
@@ -36,18 +40,41 @@ const Main: React.FC = () => {
           expiryDate: getFarFutureDate(),
           isLocked: false 
         };
-        localStorage.setItem('badmintonUsers', JSON.stringify([adminUser]));
-        setUsers([adminUser]);
+        usersFromStorage.push(adminUser);
+        shouldUpdateStorage = true;
       }
+      
+      // Check for default manager user and add if not present
+      if (!usersFromStorage.some(u => u.username === 'qlsancl')) {
+        const managerUser: User = {
+          id: 'manager-user-default',
+          username: 'qlsancl',
+          password: '123456@!',
+          fullName: 'Quản lý Sân',
+          phone: '',
+          role: 'manager',
+          expiryDate: getFarFutureDate(),
+          isLocked: false
+        };
+        usersFromStorage.push(managerUser);
+        shouldUpdateStorage = true;
+      }
+
+      if (shouldUpdateStorage) {
+        localStorage.setItem('badmintonUsers', JSON.stringify(usersFromStorage));
+      }
+
+      setUsers(usersFromStorage);
 
       const sessionUserStr = sessionStorage.getItem('badmintonCurrentUser');
       if (sessionUserStr) {
         const sessionUser: User = JSON.parse(sessionUserStr);
         // Re-validate user from full list on load
-        const fullUser = JSON.parse(localStorage.getItem('badmintonUsers') || '[]').find((u: User) => u.id === sessionUser.id);
+        const fullUser = usersFromStorage.find((u: User) => u.id === sessionUser.id);
         if (fullUser) {
            const expiry = new Date(fullUser.expiryDate);
             if (expiry.getTime() < new Date().getTime() && fullUser.role !== 'admin') {
+                setCurrentUser(fullUser); // Set user to show subscription screen
                 setIsSubscriptionRequired(true);
             } else {
                 setCurrentUser(fullUser);
@@ -120,7 +147,7 @@ const Main: React.FC = () => {
     return { success: true };
   };
 
-  const handleAdminAddUser = (newUserData: Omit<User, 'id' | 'role' | 'expiryDate' | 'isLocked'>, packageId: string): { success: boolean, message?: string } => {
+  const handleAdminAddUser = (newUserData: Omit<User, 'id' | 'role' | 'expiryDate' | 'isLocked'>, packageId: string, role: 'manager' | 'user'): { success: boolean, message?: string } => {
     if (users.some(u => u.username === newUserData.username)) {
         return { success: false, message: 'Tên đăng nhập đã tồn tại.' };
     }
@@ -136,7 +163,7 @@ const Main: React.FC = () => {
     const userToCreate: User = {
         ...newUserData,
         id: crypto.randomUUID(),
-        role: 'user',
+        role: role,
         expiryDate: expiryDate.toISOString(),
         isLocked: false,
     };

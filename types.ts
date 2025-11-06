@@ -64,7 +64,7 @@ export interface User {
   password: string;
   fullName: string;
   phone?: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'manager' | 'user';
   expiryDate: string;
   isLocked: boolean;
 }
