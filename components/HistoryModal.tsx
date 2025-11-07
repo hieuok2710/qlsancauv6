@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Session, Match, Drink, Food } from '../types';
+import { Session, Match, Drink, Food, ShuttlecockItem } from '../types';
 import { HistoryIcon, CloseIcon, ChevronDownIcon, CheckCircleIcon, CourtIcon, UserIcon } from './IconComponents';
 
 interface HistoryModalProps {
@@ -8,9 +8,10 @@ interface HistoryModalProps {
   formatCurrency: (amount: number) => string;
   drinks: Drink[];
   foods: Food[];
+  shuttlecockItems: ShuttlecockItem[];
 }
 
-const HistoryModal: React.FC<HistoryModalProps> = ({ onClose, sessions, formatCurrency, drinks, foods }) => {
+const HistoryModal: React.FC<HistoryModalProps> = ({ onClose, sessions, formatCurrency, drinks, foods, shuttlecockItems }) => {
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
 
   const toggleSession = (id: string) => {
@@ -100,16 +101,22 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ onClose, sessions, formatCu
                           <h4 className="text-md font-semibold mt-3 mb-2 text-emerald-700">Chi tiết người chơi:</h4>
                           <div className="space-y-2">
                               {session.players.map(player => {
-                                const consumedItems = [
-                                    ...Object.entries(player.consumedDrinks).map(([itemId, quantity]) => {
-                                        const item = drinks.find(d => d.id === itemId);
-                                        return item ? `${item.name} (x${quantity})` : null;
-                                    }),
-                                    ...Object.entries(player.consumedFoods).map(([itemId, quantity]) => {
-                                        const item = foods.find(f => f.id === itemId);
-                                        return item ? `${item.name} (x${quantity})` : null;
-                                    })
-                                ].filter(Boolean);
+                                const consumedDrinks = Object.entries(player.consumedDrinks).map(([itemId, quantity]) => {
+                                    const item = drinks.find(d => d.id === itemId);
+                                    return item ? `${item.name} (x${quantity})` : null;
+                                });
+                                const consumedFoods = Object.entries(player.consumedFoods).map(([itemId, quantity]) => {
+                                    const item = foods.find(f => f.id === itemId);
+                                    return item ? `${item.name} (x${quantity})` : null;
+                                });
+
+                                const consumedShuttlecocks = Object.entries(player.shuttlecockConsumption || {}).map(([itemId, quantity]) => {
+                                    const item = shuttlecockItems.find(i => i.id === itemId);
+                                    return item ? `${item.name} (x${quantity})` : null;
+                                }).filter(Boolean);
+
+                                const consumedItems = [...consumedDrinks, ...consumedFoods, ...consumedShuttlecocks].filter(Boolean);
+
 
                                 return (
                                   <div key={player.id} className="flex justify-between items-center p-2 rounded bg-gray-100">
@@ -196,8 +203,7 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ onClose, sessions, formatCu
 
                           <div className="mt-4 pt-3 border-t border-gray-200 text-sm space-y-1 text-gray-600">
                               <p className="flex justify-between"><span>Tiền sân:</span> <span className="font-medium text-gray-800">{formatCurrency(session.summary.totalCourtFee)}</span></p>
-                              <p className="flex justify-between"><span>Tiền nước:</span> <span className="font-medium text-gray-800">{formatCurrency(session.summary.totalDrinksCost)}</span></p>
-                              <p className="flex justify-between"><span>Tiền món ăn:</span> <span className="font-medium text-gray-800">{formatCurrency(session.summary.totalFoodCost)}</span></p>
+                              <p className="flex justify-between"><span>Món ăn/Thức uống:</span> <span className="font-medium text-gray-800">{formatCurrency(session.summary.totalDrinksCost + session.summary.totalFoodCost)}</span></p>
                               <p className="flex justify-between"><span>Phí cầu:</span> <span className="font-medium text-gray-800">{formatCurrency(session.summary.totalShuttlecockCost)}</span></p>
                           </div>
                         </div>

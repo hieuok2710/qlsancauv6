@@ -11,12 +11,19 @@ export interface Food {
   price: number;
 }
 
+export interface ShuttlecockItem {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export interface Player {
   id: string;
   name: string;
   phone?: string;
   consumedDrinks: Record<string, number>;
   consumedFoods: Record<string, number>;
+  shuttlecockConsumption: Record<string, number>; // Maps ShuttlecockItem.id to quantity
   isGuest?: boolean;
   quantity?: number;
   adjustment: {
@@ -33,6 +40,8 @@ export interface PlayerDetails extends Player {
   drinksCost: number;
   foodCost: number;
   shuttlecockCost: number;
+  manualShuttlecockCost: number;
+  matchShuttlecockCost: number;
 }
 
 export interface Match {

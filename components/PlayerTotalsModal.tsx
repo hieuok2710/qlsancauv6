@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { PlayerDetails, Drink, Food } from '../types';
+import { PlayerDetails, Drink, Food, ShuttlecockItem } from '../types';
 import { CloseIcon, ClipboardListIcon, UserIcon, CheckCircleIcon } from './IconComponents';
 import { COURT_FEE } from '../constants';
 
@@ -10,9 +9,10 @@ interface PlayerTotalsModalProps {
   formatCurrency: (amount: number) => string;
   drinks: Drink[];
   foods: Food[];
+  shuttlecockItems: ShuttlecockItem[];
 }
 
-const PlayerTotalsModal: React.FC<PlayerTotalsModalProps> = ({ onClose, playerDetailsList, formatCurrency, drinks, foods }) => {
+const PlayerTotalsModal: React.FC<PlayerTotalsModalProps> = ({ onClose, playerDetailsList, formatCurrency, drinks, foods, shuttlecockItems }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white border border-gray-200 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
@@ -52,37 +52,29 @@ const PlayerTotalsModal: React.FC<PlayerTotalsModalProps> = ({ onClose, playerDe
                 </div>
                 <div className="space-y-1 text-sm pl-9 text-gray-600">
                     <div className="flex justify-between"><span>Tiền sân:</span> <span className="text-gray-800">{formatCurrency(COURT_FEE * (details.quantity || 1))}</span></div>
-                    {details.drinksCost > 0 && (
+                    {(details.drinksCost > 0 || details.foodCost > 0) && (
                       <div>
                         <div className="flex justify-between">
-                            <span>Tiền nước:</span>
-                            <span className="text-gray-800">{formatCurrency(details.drinksCost)}</span>
+                            <span>Món ăn/Thức uống:</span>
+                            <span className="text-gray-800">{formatCurrency(details.drinksCost + details.foodCost)}</span>
                         </div>
                         <div className="pl-4 text-xs text-gray-500">
                             {Object.entries(details.consumedDrinks).map(([drinkId, quantity]) => {
                                 const drink = drinks.find(d => d.id === drinkId);
                                 return drink ? (
-                                    <div key={drinkId} className="flex justify-between">
+                                    <div key={`drink-${drinkId}`} className="flex justify-between">
                                         <span>- {drink.name} x{quantity}</span>
+                                        {/* Fix: Explicitly cast quantity to a number for the arithmetic operation. */}
                                         <span>{formatCurrency(drink.price * Number(quantity))}</span>
                                     </div>
                                 ) : null;
                             })}
-                        </div>
-                      </div>
-                    )}
-                     {details.foodCost > 0 && (
-                      <div>
-                        <div className="flex justify-between">
-                            <span>Tiền món ăn:</span>
-                            <span className="text-gray-800">{formatCurrency(details.foodCost)}</span>
-                        </div>
-                        <div className="pl-4 text-xs text-gray-500">
                             {Object.entries(details.consumedFoods).map(([foodId, quantity]) => {
                                 const food = foods.find(f => f.id === foodId);
                                 return food ? (
-                                    <div key={foodId} className="flex justify-between">
+                                    <div key={`food-${foodId}`} className="flex justify-between">
                                         <span>- {food.name} x{quantity}</span>
+                                        {/* Fix: Explicitly cast quantity to a number for the arithmetic operation. */}
                                         <span>{formatCurrency(food.price * Number(quantity))}</span>
                                     </div>
                                 ) : null;
@@ -91,6 +83,35 @@ const PlayerTotalsModal: React.FC<PlayerTotalsModalProps> = ({ onClose, playerDe
                       </div>
                     )}
                     <div className="flex justify-between"><span>Phí cầu:</span> <span className="text-gray-800">{formatCurrency(details.shuttlecockCost)}</span></div>
+                    {details.shuttlecockCost > 0 && (
+                        <div className="pl-4 text-xs text-gray-500">
+                            {details.matchShuttlecockCost > 0 && (
+                                <div className="flex justify-between">
+                                    <span>- Từ trận thua</span>
+                                    <span>{formatCurrency(details.matchShuttlecockCost)}</span>
+                                </div>
+                            )}
+                            {details.manualShuttlecockCost > 0 && (
+                                <>
+                                <div className="flex justify-between">
+                                    <span>- Tự thêm</span>
+                                    <span>{formatCurrency(details.manualShuttlecockCost)}</span>
+                                </div>
+                                {Object.entries(details.shuttlecockConsumption || {}).map(([itemId, quantity]) => {
+                                    const item = shuttlecockItems.find(i => i.id === itemId);
+                                    if(!item || quantity === 0) return null;
+                                    return (
+                                        <div key={itemId} className="flex justify-between pl-2">
+                                            <span>- {item.name} x{quantity}</span>
+                                            {/* Fix: Explicitly cast quantity to a number for the arithmetic operation. */}
+                                            <span>{formatCurrency(item.price * Number(quantity))}</span>
+                                        </div>
+                                    )
+                                })}
+                                </>
+                            )}
+                        </div>
+                    )}
                     {details.adjustment?.amount !== 0 && details.adjustment?.amount && (
                       <div>
                         <div className={`flex justify-between font-semibold ${details.adjustment.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>

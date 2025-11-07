@@ -1,11 +1,9 @@
-
 import React from 'react';
 import { BillIcon } from './IconComponents';
 
 interface SummaryProps {
   totalCourtFee: number;
-  totalDrinksCost: number;
-  totalFoodCost: number;
+  totalItemsCost: number;
   totalShuttlecockCost: number;
   grandTotal: number;
   totalPaid: number;
@@ -15,8 +13,7 @@ interface SummaryProps {
 
 const Summary: React.FC<SummaryProps> = ({
   totalCourtFee,
-  totalDrinksCost,
-  totalFoodCost,
+  totalItemsCost,
   totalShuttlecockCost,
   grandTotal,
   totalPaid,
@@ -38,12 +35,8 @@ const Summary: React.FC<SummaryProps> = ({
           <span className="font-medium text-gray-900">{formatCurrency(totalCourtFee)}</span>
         </div>
         <div className="flex justify-between items-center">
-          <span>Tiền nước</span>
-          <span className="font-medium text-gray-900">{formatCurrency(totalDrinksCost)}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span>Tiền món ăn</span>
-          <span className="font-medium text-gray-900">{formatCurrency(totalFoodCost)}</span>
+          <span>Món ăn/Thức uống</span>
+          <span className="font-medium text-gray-900">{formatCurrency(totalItemsCost)}</span>
         </div>
         <div className="flex justify-between items-center">
           <span>Phí cầu</span>

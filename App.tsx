@@ -1,23 +1,23 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Player, Session, PlayerDetails, Match, Drink, Food, User } from './types';
-import { COURT_FEE, SHUTTLECOCK_FEE_PER_MATCH, GUEST_PLAYER_ID, GUEST_PLAYER_NAME, DEFAULT_DRINKS, DEFAULT_FOODS } from './constants';
+import { Player, Session, PlayerDetails, Match, Drink, Food, User, ShuttlecockItem } from './types';
+import { COURT_FEE, GUEST_PLAYER_ID, GUEST_PLAYER_NAME, DEFAULT_DRINKS, DEFAULT_FOODS, DEFAULT_SHUTTLECOCK_ITEMS } from './constants';
 import Header from './components/Header';
 import PlayerCard from './components/PlayerCard';
 import Summary from './components/Summary';
 import HistoryModal from './components/HistoryModal';
 import DailyStatsModal from './components/DailyStatsModal';
-import { UsersIcon, SaveIcon, ClipboardListIcon, BillIcon, CloseIcon, CourtIcon, FoodIcon, SparklesIcon, ChevronDownIcon, CheckCircleIcon, UserCogIcon, DownloadIcon, ClipboardCheckIcon, WaterIcon } from './components/IconComponents';
+import { UsersIcon, SaveIcon, ClipboardListIcon, BillIcon, CloseIcon, CourtIcon, FoodIcon, SparklesIcon, ChevronDownIcon, CheckCircleIcon, UserCogIcon, DownloadIcon, ClipboardCheckIcon, ShuttlecockIcon } from './components/IconComponents';
 import CourtAssignment from './components/CourtAssignment';
 import PlayerTotalsModal from './components/PlayerTotalsModal';
 import PastRevenueModal from './components/PastRevenueModal';
 import PlayerManagementModal from './components/PlayerManagementModal';
 import CostAdjustmentModal from './components/CostAdjustmentModal';
-import FoodManagementModal from './components/FoodManagementModal';
-import DrinkManagementModal from './components/DrinkManagementModal';
+import ItemManagementModal from './components/FoodManagementModal';
 import UserManagementModal from './components/UserManagementModal';
 import BackupRestoreModal from './components/BackupRestoreModal';
 import PaidPlayersModal from './components/PaidPlayersModal';
 import MatchResultModal from './components/MatchResultModal';
+import ShuttlecockManagementModal from './components/CostSettingsModal';
 
 interface AppProps {
   onLogout: () => void;
@@ -92,6 +92,7 @@ const createInitialPlayers = (storageKey: string): Player[] => {
         name: GUEST_PLAYER_NAME,
         consumedDrinks: {},
         consumedFoods: {},
+        shuttlecockConsumption: {},
         isGuest: true,
         quantity: 1,
         adjustment: { amount: 0, reason: '' },
@@ -102,7 +103,7 @@ const createInitialPlayers = (storageKey: string): Player[] => {
         const storedPlayers = localStorage.getItem(storageKey);
         if (storedPlayers) {
             const parsed = JSON.parse(storedPlayers) as { id: string, name: string, phone?: string }[];
-            const regularPlayers = parsed.filter(p => p.id !== GUEST_PLAYER_ID).map(p => ({ ...p, consumedDrinks: {}, consumedFoods: {}, quantity: 1, adjustment: { amount: 0, reason: '' }, isPaid: false }));
+            const regularPlayers = parsed.filter(p => p.id !== GUEST_PLAYER_ID).map(p => ({ ...p, consumedDrinks: {}, consumedFoods: {}, shuttlecockConsumption: {}, quantity: 1, adjustment: { amount: 0, reason: '' }, isPaid: false }));
             return [guestPlayer, ...regularPlayers];
         }
     } catch (e) {
@@ -110,8 +111,8 @@ const createInitialPlayers = (storageKey: string): Player[] => {
     }
     
     const defaultPlayers = [
-        { id: crypto.randomUUID(), name: 'Người chơi 1', phone: '', consumedDrinks: {}, consumedFoods: {}, quantity: 1, adjustment: { amount: 0, reason: '' }, isPaid: false },
-        { id: crypto.randomUUID(), name: 'Người chơi 2', phone: '', consumedDrinks: {}, consumedFoods: {}, quantity: 1, adjustment: { amount: 0, reason: '' }, isPaid: false },
+        { id: crypto.randomUUID(), name: 'Người chơi 1', phone: '', consumedDrinks: {}, consumedFoods: {}, shuttlecockConsumption: {}, quantity: 1, adjustment: { amount: 0, reason: '' }, isPaid: false },
+        { id: crypto.randomUUID(), name: 'Người chơi 2', phone: '', consumedDrinks: {}, consumedFoods: {}, shuttlecockConsumption: {}, quantity: 1, adjustment: { amount: 0, reason: '' }, isPaid: false },
     ];
     
     return [guestPlayer, ...defaultPlayers];
@@ -148,6 +149,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
         foods: `badmintonFoods_${currentUser.id}`,
         autoBackup: `badmintonAutoBackup_${currentUser.id}`,
         lastAutoBackupTimestamp: `lastAutoBackupTimestamp_${currentUser.id}`,
+        settings: `badmintonSettings_${currentUser.id}`,
     };
   }, [currentUser]);
   
@@ -155,18 +157,19 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [drinks, setDrinks] = useState<Drink[]>([]);
   const [foods, setFoods] = useState<Food[]>([]);
+  const [shuttlecockItems, setShuttlecockItems] = useState<ShuttlecockItem[]>([]);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [isPlayerTotalsModalOpen, setIsPlayerTotalsModalOpen] = useState(false);
   const [isPaidPlayersModalOpen, setIsPaidPlayersModalOpen] = useState(false);
   const [isPlayerManagementModalOpen, setIsPlayerManagementModalOpen] = useState(false);
-  const [isFoodManagementModalOpen, setIsFoodManagementModalOpen] = useState(false);
-  const [isDrinkManagementModalOpen, setIsDrinkManagementModalOpen] = useState(false);
+  const [isItemManagementModalOpen, setIsItemManagementModalOpen] = useState(false);
   const [isUserManagementModalOpen, setIsUserManagementModalOpen] = useState(false);
   const [isSaveConfirmModalOpen, setIsSaveConfirmModalOpen] = useState(false);
   const [isPastRevenueModalOpen, setIsPastRevenueModalOpen] = useState(false);
   const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
   const [isBackupRestoreModalOpen, setIsBackupRestoreModalOpen] = useState(false);
+  const [isCostSettingsModalOpen, setIsCostSettingsModalOpen] = useState(false);
   const [playerToAdjustId, setPlayerToAdjustId] = useState<string | null>(null);
   const [assignments, setAssignments] = useState<Record<string, string | null>>({});
   const [matchesPlayed, setMatchesPlayed] = useState(0);
@@ -210,6 +213,15 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
         } else {
             setFoods(DEFAULT_FOODS);
         }
+        const storedSettings = localStorage.getItem(storageKeys.settings);
+        if (storedSettings) {
+            try {
+                const settings = JSON.parse(storedSettings);
+                setShuttlecockItems(settings.shuttlecockItems ?? DEFAULT_SHUTTLECOCK_ITEMS);
+            } catch (e) { console.error("Failed to parse settings", e); }
+        } else {
+          setShuttlecockItems(DEFAULT_SHUTTLECOCK_ITEMS);
+        }
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
       setSessions([]); 
@@ -229,14 +241,16 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
             const colorsData = localStorage.getItem(storageKeys.courtColors);
             const drinksData = localStorage.getItem(storageKeys.drinks);
             const foodsData = localStorage.getItem(storageKeys.foods);
+            const settingsData = localStorage.getItem(storageKeys.settings);
 
-            if (playersData || historyData || colorsData || drinksData || foodsData) {
+            if (playersData || historyData || colorsData || drinksData || foodsData || settingsData) {
                 const backupData = {
                     players: playersData ? JSON.parse(playersData) : [],
                     history: historyData ? JSON.parse(historyData) : [],
                     colors: colorsData ? JSON.parse(colorsData) : {},
                     drinks: drinksData ? JSON.parse(drinksData) : [],
                     foods: foodsData ? JSON.parse(foodsData) : [],
+                    settings: settingsData ? JSON.parse(settingsData) : {},
                     timestamp: new Date().toISOString(),
                 };
 
@@ -274,8 +288,15 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
             const food = foods.find(f => f.id === foodId);
             return total + (food ? food.price * Number(quantity) : 0);
         }, 0);
+        
+        const manualShuttlecockCost = Object.entries(player.shuttlecockConsumption || {}).reduce((total, [itemId, quantity]) => {
+            const item = shuttlecockItems.find(i => i.id === itemId);
+            return total + (item ? item.price * Number(quantity) : 0);
+        }, 0);
 
-        const shuttlecockCost = playerShuttlecockFees[player.id] || 0;
+        const matchShuttlecockCost = playerShuttlecockFees[player.id] || 0;
+        const shuttlecockCost = manualShuttlecockCost + matchShuttlecockCost;
+        
         const courtFee = player.isGuest ? COURT_FEE * (player.quantity || 1) : COURT_FEE;
         const adjustmentAmount = player.adjustment?.amount || 0;
         const totalCost = courtFee + drinksCost + foodCost + shuttlecockCost + adjustmentAmount;
@@ -288,9 +309,11 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
             drinksCost,
             foodCost,
             shuttlecockCost,
+            manualShuttlecockCost,
+            matchShuttlecockCost,
         };
     });
-  }, [players, playerLosses, playerWins, playerShuttlecockFees, drinks, foods]);
+  }, [players, playerLosses, playerWins, playerShuttlecockFees, drinks, foods, shuttlecockItems]);
 
   const playerCountForFee = useMemo(() => {
     return players.reduce((count, player) => {
@@ -314,11 +337,11 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
     }, { totalDrinksCost: 0, totalFoodCost: 0, totalShuttlecockCost: 0, grandTotal: 0, totalPaid: 0 });
     
     const totalCourtFee = playerCountForFee * COURT_FEE;
+    const totalItemsCost = totalDrinksCost + totalFoodCost;
     
     return {
         totalCourtFee,
-        totalDrinksCost,
-        totalFoodCost,
+        totalItemsCost,
         totalShuttlecockCost,
         grandTotal,
         totalPaid
@@ -418,7 +441,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
 
   const handleAddPlayer = useCallback((name: string) => {
     if (!name.trim() || !storageKeys) return;
-    const newPlayer = { id: crypto.randomUUID(), name: name.trim(), phone: '', consumedDrinks: {}, consumedFoods: {}, quantity: 1, adjustment: { amount: 0, reason: '' }, isPaid: false };
+    const newPlayer: Player = { id: crypto.randomUUID(), name: name.trim(), phone: '', consumedDrinks: {}, consumedFoods: {}, shuttlecockConsumption: {}, quantity: 1, adjustment: { amount: 0, reason: '' }, isPaid: false };
     const updatedPlayers = [...players, newPlayer];
     setPlayers(updatedPlayers);
     savePlayersToStorage(storageKeys.players, updatedPlayers);
@@ -473,6 +496,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
               phone: p.phone || '',
               consumedDrinks: {},
               consumedFoods: {},
+              shuttlecockConsumption: {},
               quantity: 1,
               adjustment: { amount: 0, reason: '' },
               isPaid: false,
@@ -507,6 +531,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
               phone: p.phone?.trim() || '',
               consumedDrinks: {},
               consumedFoods: {},
+              shuttlecockConsumption: {},
               quantity: 1,
               adjustment: { amount: 0, reason: '' },
               isPaid: false,
@@ -554,6 +579,23 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
         }
         
         return { ...p, consumedFoods: newFoods };
+      }
+      return p;
+    }));
+  }, []);
+
+  const handleUpdateShuttlecockConsumption = useCallback((id: string, itemId: string, amount: number) => {
+    setPlayers(prev => prev.map(p => {
+      if (p.id === id) {
+        const newConsumption = { ...(p.shuttlecockConsumption || {}) };
+        const currentQuantity = newConsumption[itemId] || 0;
+        const newQuantity = Math.max(0, currentQuantity + amount);
+        if (newQuantity === 0) {
+            delete newConsumption[itemId];
+        } else {
+            newConsumption[itemId] = newQuantity;
+        }
+        return { ...p, shuttlecockConsumption: newConsumption };
       }
       return p;
     }));
@@ -663,7 +705,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
     setIsMatchResultModalOpen(true);
   }, [assignments, courtGameTypes, players]);
 
-  const handleConfirmMatchResult = useCallback(({ winningTeam }: { winningTeam: 'A' | 'B' | 'DRAW' }) => {
+  const handleConfirmMatchResult = useCallback(({ winningTeam, consumption }: { winningTeam: 'A' | 'B' | 'DRAW', consumption: Record<string, number> }) => {
     if (!activeMatch) return;
 
     const { courtIndex, teamA, teamB, gameType } = activeMatch;
@@ -711,14 +753,21 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
     });
 
     if (loserIds.length > 0) {
-        const feePerLoser = SHUTTLECOCK_FEE_PER_MATCH / loserIds.length;
-        setPlayerShuttlecockFees(prev => {
-            const newFees = { ...prev };
-            loserIds.forEach(id => {
-                newFees[id] = (newFees[id] || 0) + feePerLoser;
+        const totalShuttlecockCost = Object.entries(consumption).reduce((total, [itemId, quantity]) => {
+            const item = shuttlecockItems.find(i => i.id === itemId);
+            return total + (item ? item.price * Number(quantity) : 0);
+        }, 0);
+
+        if (totalShuttlecockCost > 0) {
+            const feePerLoser = totalShuttlecockCost / loserIds.length;
+            setPlayerShuttlecockFees(prev => {
+                const newFees = { ...prev };
+                loserIds.forEach(id => {
+                    newFees[id] = (newFees[id] || 0) + feePerLoser;
+                });
+                return newFees;
             });
-            return newFees;
-        });
+        }
     }
 
     const newMatch: Match = {
@@ -735,7 +784,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
 
     setIsMatchResultModalOpen(false);
     setActiveMatch(null);
-  }, [activeMatch]);
+  }, [activeMatch, shuttlecockItems]);
 
   
   const handleSaveSession = useCallback(() => {
@@ -743,6 +792,13 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
       setNotification('Không có người chơi nào để lưu.');
       return;
     }
+    
+    const { totalDrinksCost, totalFoodCost } = playerDetails.reduce((acc, p) => {
+        acc.totalDrinksCost += p.drinksCost;
+        acc.totalFoodCost += p.foodCost;
+        return acc;
+    }, { totalDrinksCost: 0, totalFoodCost: 0 });
+
 
     const newSession: Session = {
       id: crypto.randomUUID(),
@@ -751,8 +807,8 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
       gameType: 'doubles', // This is a placeholder; could be enhanced later
       summary: {
         totalCourtFee: summary.totalCourtFee,
-        totalDrinksCost: summary.totalDrinksCost,
-        totalFoodCost: summary.totalFoodCost,
+        totalDrinksCost: totalDrinksCost,
+        totalFoodCost: totalFoodCost,
         totalShuttlecockCost: summary.totalShuttlecockCost,
         grandTotal: summary.grandTotal,
       },
@@ -787,6 +843,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
             courtColors: JSON.parse(localStorage.getItem(storageKeys.courtColors) || '{}'),
             drinks: JSON.parse(localStorage.getItem(storageKeys.drinks) || '[]'),
             foods: JSON.parse(localStorage.getItem(storageKeys.foods) || '[]'),
+            settings: JSON.parse(localStorage.getItem(storageKeys.settings) || '{}'),
             timestamp: new Date().toISOString(),
         };
         const blob = new Blob([JSON.stringify(dataToBackup, null, 2)], { type: 'application/json' });
@@ -822,6 +879,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
             if (data.courtColors) localStorage.setItem(storageKeys.courtColors, JSON.stringify(data.courtColors));
             if (data.drinks) localStorage.setItem(storageKeys.drinks, JSON.stringify(data.drinks));
             if (data.foods) localStorage.setItem(storageKeys.foods, JSON.stringify(data.foods));
+            if (data.settings) localStorage.setItem(storageKeys.settings, JSON.stringify(data.settings));
             setNotification('Phục hồi dữ liệu thành công! Trang sẽ được tải lại.');
             setTimeout(() => window.location.reload(), 2000);
         } catch (error) {
@@ -850,6 +908,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
         if (backupData.colors) localStorage.setItem(storageKeys.courtColors, JSON.stringify(backupData.colors));
         if (backupData.drinks) localStorage.setItem(storageKeys.drinks, JSON.stringify(backupData.drinks));
         if (backupData.foods) localStorage.setItem(storageKeys.foods, JSON.stringify(backupData.foods));
+        if (backupData.settings) localStorage.setItem(storageKeys.settings, JSON.stringify(backupData.settings));
         
         setNotification(`Đã phục hồi dữ liệu từ bản sao lưu lúc ${new Date(backupData.timestamp).toLocaleString('vi-VN')}. Đang tải lại...`);
         setTimeout(() => {
@@ -860,6 +919,17 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
         console.error('Failed to restore from auto backup:', error);
         setNotification('Phục hồi từ sao lưu tự động thất bại.');
     }
+  }, [storageKeys]);
+
+  const handleUpdateShuttlecockItems = useCallback((newItems: ShuttlecockItem[]) => {
+    if (!storageKeys) return;
+    setShuttlecockItems(newItems);
+    const storedSettings = localStorage.getItem(storageKeys.settings);
+    const currentSettings = storedSettings ? JSON.parse(storedSettings) : {};
+    const newSettings = { ...currentSettings, shuttlecockItems: newItems };
+    localStorage.setItem(storageKeys.settings, JSON.stringify(newSettings));
+    setIsCostSettingsModalOpen(false);
+    setNotification('Danh sách chi phí cầu đã được cập nhật.');
   }, [storageKeys]);
   
   return (
@@ -892,18 +962,18 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
                             </button>
                         )}
                         <button 
-                            onClick={() => setIsDrinkManagementModalOpen(true)}
-                            className="flex items-center bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 font-semibold py-2 px-3 rounded-lg transition duration-300 shadow-sm text-sm"
-                        >
-                            <WaterIcon className="w-5 h-5 mr-2" />
-                            Quản lý Thức uống
-                        </button>
-                        <button 
-                            onClick={() => setIsFoodManagementModalOpen(true)}
+                            onClick={() => setIsItemManagementModalOpen(true)}
                             className="flex items-center bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 font-semibold py-2 px-3 rounded-lg transition duration-300 shadow-sm text-sm"
                         >
                             <FoodIcon className="w-5 h-5 mr-2" />
-                            Quản lý Món ăn
+                            Món ăn/Thức uống
+                        </button>
+                        <button 
+                            onClick={() => setIsCostSettingsModalOpen(true)}
+                            className="flex items-center bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 font-semibold py-2 px-3 rounded-lg transition duration-300 shadow-sm text-sm"
+                        >
+                            <ShuttlecockIcon className="w-5 h-5 mr-2" />
+                            Quản lý phí cầu
                         </button>
                         <button 
                             onClick={() => setIsPlayerManagementModalOpen(true)}
@@ -940,8 +1010,10 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
                                 playerDetails={details}
                                 drinks={drinks}
                                 foods={foods}
+                                shuttlecockItems={shuttlecockItems}
                                 onUpdateDrink={handleUpdateDrink}
                                 onUpdateFood={handleUpdateFood}
+                                onUpdateShuttlecockConsumption={handleUpdateShuttlecockConsumption}
                                 onUpdateQuantity={handleUpdateQuantity}
                                 formatCurrency={formatCurrency}
                                 isAssigned={assignedPlayerIds.has(details.id)}
@@ -977,8 +1049,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
             <div className="sticky top-24">
               <Summary
                 totalCourtFee={summary.totalCourtFee}
-                totalDrinksCost={summary.totalDrinksCost}
-                totalFoodCost={summary.totalFoodCost}
+                totalItemsCost={summary.totalItemsCost}
                 totalShuttlecockCost={summary.totalShuttlecockCost}
                 grandTotal={summary.grandTotal}
                 totalPaid={summary.totalPaid}
@@ -1027,6 +1098,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
           formatCurrency={formatCurrency}
           drinks={drinks}
           foods={foods}
+          shuttlecockItems={shuttlecockItems}
         />
       )}
       {isStatsModalOpen && (
@@ -1043,6 +1115,7 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
           formatCurrency={formatCurrency}
           drinks={drinks}
           foods={foods}
+          shuttlecockItems={shuttlecockItems}
         />
       )}
       {isPaidPlayersModalOpen && (
@@ -1062,16 +1135,11 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
           onImportPlayers={(importedPlayers) => handleImportPlayers(importedPlayers, 'replace')}
         />
       )}
-       {isFoodManagementModalOpen && (
-        <FoodManagementModal
-          onClose={() => setIsFoodManagementModalOpen(false)}
+       {isItemManagementModalOpen && (
+        <ItemManagementModal
+          onClose={() => setIsItemManagementModalOpen(false)}
           foods={foods}
           onUpdateFoods={handleUpdateFoods}
-        />
-      )}
-       {isDrinkManagementModalOpen && (
-        <DrinkManagementModal
-          onClose={() => setIsDrinkManagementModalOpen(false)}
           drinks={drinks}
           onUpdateDrinks={handleUpdateDrinks}
         />
@@ -1118,12 +1186,21 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
           onRestoreFromAutoBackup={handleRestoreFromAutoBackup}
         />
       )}
+      {isCostSettingsModalOpen && (
+        <ShuttlecockManagementModal
+          onClose={() => setIsCostSettingsModalOpen(false)}
+          onSave={handleUpdateShuttlecockItems}
+          currentItems={shuttlecockItems}
+          formatCurrency={formatCurrency}
+        />
+      )}
       {isMatchResultModalOpen && activeMatch && (
         <MatchResultModal
           isOpen={isMatchResultModalOpen}
           onClose={() => setIsMatchResultModalOpen(false)}
           onConfirmResult={handleConfirmMatchResult}
           matchDetails={activeMatch}
+          shuttlecockItems={shuttlecockItems}
         />
       )}
 
@@ -1138,5 +1215,4 @@ const App: React.FC<AppProps> = ({ onLogout, currentUser, users, onUpdateUsers, 
   );
 };
 
-// Fix: Add default export for App component to resolve import error.
 export default App;

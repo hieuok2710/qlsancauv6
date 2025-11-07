@@ -1,8 +1,12 @@
-import { Drink, Food } from './types';
+import { Drink, Food, ShuttlecockItem } from './types';
 
 // --- Cost Configuration ---
 export const COURT_FEE = 15000; // per person per session
-export const SHUTTLECOCK_FEE_PER_MATCH = 20000; // total fee per match, to be divided among losers
+export const DEFAULT_SHUTTLECOCK_ITEMS: ShuttlecockItem[] = [
+    { id: 'cau-nguyen', name: 'Cầu nguyên', price: 28000 },
+    { id: 'cau-nua', name: 'Cầu 1/2', price: 14000 },
+    { id: 'cau-tu', name: 'Cầu 1/4', price: 7000 },
+];
 
 // --- Player Configuration ---
 export const GUEST_PLAYER_ID = 'guest-player';
